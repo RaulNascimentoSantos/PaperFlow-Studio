@@ -1,0 +1,481 @@
+PROMPT DEFINITIVO PARA CLAUDE CODER - PAPERFLOW API 2.0
+
+==============================================================================
+CONTEXTO E MISSÃO
+==============================================================================
+
+Você é um Arquiteto de Software Sênior e Engenheiro Full-Stack especialista em TypeScript, Fastify, React, PostgreSQL com pgvector, e construção de sistemas enterprise-grade com IA.
+
+Projeto: PaperFlow Studio
+Estrutura: Monorepo (pnpm workspaces)
+- paperflow-api/: Backend Fastify + TypeScript
+- apps/web/: Frontend React + Vite + TypeScript + Tailwind + shadcn/ui
+- packages/sdk/: SDK TypeScript compartilhado
+
+Sua missão: Executar uma evolução completa do sistema em 3 fases sequenciais, transformando o PaperFlow em uma solução enterprise-ready para o setor jurídico.
+
+==============================================================================
+PRINCÍPIOS FUNDAMENTAIS
+==============================================================================
+
+1. Código Completo: Sempre forneça arquivos completos com caminhos absolutos, prontos para copy/paste
+2. Local-First: Tudo deve funcionar localmente (Docker Compose com Postgres, Redis, MinIO)
+3. Alternância Mock/Real: Sistema configurável via USE_MOCKS para desenvolvimento e produção
+4. Segurança Jurídica: Cadeia de custódia, audit logs, hashing SHA-256, HMAC em webhooks
+5. TypeScript Estrito: Validação com Zod em todos os pontos de entrada
+6. Observabilidade: Logs estruturados, métricas Prometheus, tracing
+7. UI Moderna 2025: Dark-first, OKLCH, glassmorphism sutil, microinterações
+
+==============================================================================
+FASE 1: CORREÇÕES CRÍTICAS E ESTABILIZAÇÃO
+==============================================================================
+
+1.1 CORREÇÃO DO SSE (Server-Sent Events)
+-----------------------------------------
+Arquivo: paperflow-api/src/routes/documents.ts
+
+Implementar SSE compatível com EventSource nativo:
+- Suporte a autenticação via query param ?apiKey= e header x-api-key
+- Heartbeat a cada 15 segundos
+- Suporte a reconexão com Last-Event-ID
+- Formato correto: id:, event:, data:, retry:
+
+Código completo:
+```typescript
+// No topo do arquivo
+import { AuthService } from '@/services/auth';
+import { createError } from '@/utils/errors';
+
+fastify.get(
+  '/:id/events',
+  {
+    schema: {
+      description: 'Server-Sent Events stream for document processing',
+      tags: ['Documents'],
+      params: z.object({ id: z.string() }),
+      querystring: z.object({ apiKey: z.string().optional() })
+    },
+  },
+  async (request, reply) => {
+    const { id } = request.params;
+    const { apiKey } = request.query;
+    const headerKey = request.headers['x-api-key'] as string | undefined;
+    const key = headerKey ?? apiKey;
+
+    if (!key) throw createError.unauthorized('Missing API key');
+    const user = await AuthService.validateApiKey(key);
+    if (!user) throw createError.unauthorized('Invalid API key');
+
+    reply.raw.setHeader('Content-Type', 'text/event-stream');
+    reply.raw.setHeader('Cache-Control', 'no-cache');
+    reply.raw.setHeader('Connection', 'keep-alive');
+    reply.raw.write('retry: 3000\n\n');
+
+    let eventId = Number(request.headers['last-event-id'] ?? 0) || 0;
+
+    const heartbeat = setInterval(() => {
+      reply.raw.write(`:heartbeat ${Date.now()}\n\n`);
+    }, 15000);
+
+    const stages = [
+      { stage: 'queued', progress: 0, message: 'Documento na fila' },
+      { stage: 'parsing', progress: 20, message: 'Analisando PDF' },
+      { stage: 'extracting', progress: 40, message: 'Extraindo texto' },
+      { stage: 'tables', progress: 60, message: 'Extraindo tabelas' },
+      { stage: 'ocr', progress: 75, message: 'OCR (se necessário)' },
+      { stage: 'embedding', progress: 90, message: 'Gerando embeddings' },
+    ];
+
+    let i = 0;
+    const ticker = setInterval(() => {
+      if (i < stages.length) {
+        eventId++;
+        const payload = { type: 'progress', documentId: id, ...stages[i], timestamp: new Date().toISOString() };
+        reply.raw.write(`id: ${eventId}\n`);
+        reply.raw.write(`event: progress\n`);
+        reply.raw.write(`data: ${JSON.stringify(payload)}\n\n`);
+        i++;
+      } else {
+        eventId++;
+        const done = { type: 'completed', documentId: id, timestamp: new Date().toISOString() };
+        reply.raw.write(`id: ${eventId}\n`);
+        reply.raw.write(`event: completed\n`);
+        reply.raw.write(`data: ${JSON.stringify(done)}\n\n`);
+        clearInterval(ticker);
+      }
+    }, 1000);
+
+    const cleanup = () => { clearInterval(heartbeat); clearInterval(ticker); };
+    request.raw.on('close', cleanup);
+  }
+);
+```
+
+1.2 CONFIGURAÇÃO DE AMBIENTE ROBUSTA
+-------------------------------------
+Arquivo: paperflow-api/src/config/env.ts
+
+```typescript
+import { z } from 'zod';
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  PORT: z.coerce.number().default(3002),
+  HOST: z.string().default('0.0.0.0'),
+  USE_MOCKS: z.coerce.boolean().default(true),
+  DATABASE_URL: z.string().url(),
+  DB_SSL: z.coerce.boolean().default(false),
+  REDIS_URL: z.string().url(),
+  S3_ENDPOINT: z.string().url(),
+  S3_ACCESS_KEY: z.string(),
+  S3_SECRET_KEY: z.string(),
+  S3_BUCKET: z.string().default('paperflow-dev'),
+  S3_REGION: z.string().default('us-east-1'),
+  OPENAI_API_KEY: z.string().startsWith('sk-').optional(),
+  OPENAI_MODEL: z.string().default('gpt-4-turbo-preview'),
+  JWT_SECRET: z.string().min(32),
+  API_KEY_SECRET: z.string().min(32),
+  WEBHOOK_SECRET: z.string().min(32),
+  MAX_FILE_SIZE_MB: z.coerce.number().default(50),
+  MAX_PAGES_PER_PDF: z.coerce.number().default(1000),
+  RATE_LIMIT_MAX: z.coerce.number().default(100),
+  ENABLE_OCR: z.coerce.boolean().default(true),
+  ENABLE_WEBHOOKS: z.coerce.boolean().default(true),
+  ENABLE_METRICS: z.coerce.boolean().default(true),
+});
+
+export const env = envSchema.parse(process.env);
+```
+
+1.3 DOCKER COMPOSE PARA DESENVOLVIMENTO
+----------------------------------------
+Arquivo: paperflow-api/docker-compose.yml
+
+```yaml
+version: '3.9'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: paperflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: paperflow
+      MINIO_ROOT_PASSWORD: paperflow123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+```
+
+1.4 MIGRATIONS COMPLETAS
+------------------------
+Arquivo: paperflow-api/migrations/001_complete_schema.sql
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  company TEXT NOT NULL,
+  plan TEXT NOT NULL CHECK (plan IN ('free', 'pro', 'enterprise')),
+  api_key_hash TEXT NOT NULL,
+  api_secret_hash TEXT NOT NULL,
+  credits_remaining INTEGER DEFAULT 1000,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  last_active TIMESTAMPTZ,
+  metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE TABLE IF NOT EXISTS documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL DEFAULT 'default',
+  original_name TEXT NOT NULL,
+  storage_key TEXT NOT NULL,
+  size_bytes BIGINT NOT NULL,
+  mime_type TEXT NOT NULL,
+  sha256_hash TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  pages INTEGER,
+  processing_time_ms INTEGER,
+  error_message TEXT,
+  case_number TEXT,
+  court TEXT,
+  parties JSONB,
+  document_type TEXT,
+  bates_prefix TEXT,
+  bates_start INTEGER,
+  bates_end INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  CONSTRAINT valid_status CHECK (status IN ('pending', 'processing', 'completed', 'failed'))
+);
+
+CREATE TABLE IF NOT EXISTS document_pages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  page_number INTEGER NOT NULL,
+  text TEXT,
+  ocr_confidence FLOAT,
+  word_count INTEGER,
+  char_count INTEGER,
+  checksum TEXT,
+  bates_number TEXT,
+  redactions JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(document_id, page_number)
+);
+
+CREATE TABLE IF NOT EXISTS chunks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  page_number INTEGER NOT NULL,
+  chunk_index INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  embedding vector(384),
+  token_count INTEGER,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(document_id, page_number, chunk_index)
+);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  actor TEXT NOT NULL,
+  action TEXT NOT NULL,
+  ip_address INET,
+  user_agent TEXT,
+  payload JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS webhooks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  url TEXT NOT NULL,
+  events TEXT[] NOT NULL,
+  secret TEXT NOT NULL,
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS webhook_attempts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  webhook_id UUID NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+  event TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  response_status INTEGER,
+  response_body TEXT,
+  error_message TEXT,
+  attempt_number INTEGER DEFAULT 1,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS evidence_packages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  manifest JSONB NOT NULL,
+  files TEXT[] NOT NULL,
+  package_hash TEXT NOT NULL,
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_documents_user_id ON documents(user_id);
+CREATE INDEX idx_documents_status ON documents(status);
+CREATE INDEX idx_documents_sha256 ON documents(sha256_hash);
+CREATE INDEX idx_chunks_document_id ON chunks(document_id);
+CREATE INDEX idx_chunks_embedding ON chunks USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX idx_audit_log_document ON audit_log(document_id);
+CREATE INDEX idx_audit_log_created ON audit_log(created_at);
+CREATE INDEX idx_webhook_attempts_webhook ON webhook_attempts(webhook_id);
+
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER update_webhooks_updated_at BEFORE UPDATE ON webhooks
+FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+```
+
+1.5 CORREÇÕES DE SEGURANÇA E ERROR HANDLING
+--------------------------------------------
+Arquivo: paperflow-api/src/app.ts
+
+Adicionar após registrar plugins:
+
+```typescript
+app.addHook('onRequest', async (req) => {
+  if (req.headers['x-api-key']) {
+    req.headers['x-api-key'] = '[REDACTED]';
+  }
+  if ((req.query as any)?.apiKey) {
+    (req.query as any).apiKey = '[REDACTED]';
+  }
+});
+
+app.setErrorHandler((err, req, reply) => {
+  const traceId = crypto.randomUUID();
+  const status = (err as any).statusCode || 500;
+  
+  req.log.error({
+    err,
+    traceId,
+    url: req.url,
+    method: req.method,
+    ip: req.ip,
+  });
+  
+  reply.status(status).send({
+    error: {
+      code: (err as any).code || 'INTERNAL_SERVER_ERROR',
+      message: status < 500 ? err.message : 'An unexpected error occurred',
+      traceId,
+      ...(env.NODE_ENV !== 'production' && { stack: err.stack }),
+    }
+  });
+});
+```
+
+==============================================================================
+FASE 2: ARQUITETURA ENTERPRISE E FEATURES CORE
+==============================================================================
+
+[CONTINUA COM TODOS OS SERVIÇOS E CÓDIGOS COMPLETOS...]
+
+==============================================================================
+COMANDOS DE INSTALAÇÃO E EXECUÇÃO
+==============================================================================
+
+# Passo 1: Preparar o Ambiente
+git clone <seu-repo>
+cd paperflow-api
+pnpm install
+cp paperflow-api/.env.example paperflow-api/.env
+cp apps/web/.env.example apps/web/.env
+
+# Passo 2: Levantar Serviços Docker
+cd paperflow-api
+docker-compose up -d
+docker-compose ps
+pnpm run migrate
+
+# Passo 3: Iniciar Aplicação
+# Terminal 1 - Backend
+cd paperflow-api
+pnpm dev
+
+# Terminal 2 - Frontend
+cd apps/web
+pnpm dev
+
+# Passo 4: Testes e Validação
+pnpm --filter paperflow-api test
+pnpm --filter paperflow-api test:e2e
+curl http://localhost:3002/v1/metrics
+curl http://localhost:3002/v1/health
+
+==============================================================================
+CHECKLIST DE VALIDAÇÃO
+==============================================================================
+
+Funcionalidades Core:
+[ ] Sistema inicia com USE_MOCKS=true (desenvolvimento)
+[ ] Sistema inicia com USE_MOCKS=false (produção local)
+[ ] Upload de PDF funciona e retorna ID
+[ ] SSE conecta via EventSource nativo
+[ ] SSE reconecta automaticamente após desconexão
+[ ] Heartbeat mantém conexão SSE viva
+
+Funcionalidades Jurídicas:
+[ ] Numeração Bates aplicada corretamente
+[ ] Detecção de PII identifica CPF, CNPJ, OAB
+[ ] Redação de PII gera PDF com tarja preta
+[ ] Manifest de custódia gerado com hashes corretos
+[ ] Audit log registra todas as ações
+[ ] Dossiê de evidências exportado como ZIP
+
+Segurança:
+[ ] API Keys validadas em todas as rotas protegidas
+[ ] Headers sensíveis redactados nos logs
+[ ] Webhooks assinados com HMAC
+[ ] Janela anti-replay de 5 minutos funcionando
+[ ] Variáveis de ambiente validadas com Zod
+
+Performance e Observabilidade:
+[ ] Métricas Prometheus expostas em /v1/metrics
+[ ] Métricas customizadas registradas
+[ ] Logs estruturados com Pino
+[ ] Error handler centralizado retorna traceId
+
+UI/UX:
+[ ] Design dark-first com tokens OKLCH
+[ ] Command Palette abre com Cmd/Ctrl+K
+[ ] Document Viewer com 5 abas funcionais
+[ ] Copiloto Jurídico mostra análises
+[ ] Modo de redação toggle funciona
+[ ] Microinterações suaves (180-240ms)
+
+==============================================================================
+RESULTADO ESPERADO
+==============================================================================
+
+Uma aplicação completa, segura e moderna para processamento de documentos jurídicos, com todas as features essenciais funcionando localmente e pronta para escalar para produção.
+
+IMPORTANTE: Implemente o código COMPLETO de cada arquivo mencionado, não apenas trechos. Cada arquivo deve estar pronto para copy/paste direto no projeto.

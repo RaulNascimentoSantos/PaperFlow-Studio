@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
@@ -21,6 +22,9 @@ import {
 
 // Error handling
 import { sanitizeError } from './utils/errors';
+
+// Plugins
+import metricsPlugin from './plugins/metrics';
 
 // Routes
 import healthRoutes from './routes/health';
@@ -76,6 +80,9 @@ export async function createApp(): Promise<FastifyInstance> {
     },
     attachFieldsToBody: false,
   });
+
+  // Register metrics plugin
+  await app.register(metricsPlugin);
 
   // Register Swagger documentation
   await app.register(swagger, {
@@ -139,6 +146,16 @@ export async function createApp(): Promise<FastifyInstance> {
     return app.swagger();
   });
 
+  // Security hooks for sanitizing sensitive data in logs
+  app.addHook('onRequest', async (req) => {
+    if (req.headers['x-api-key']) {
+      req.headers['x-api-key'] = '[REDACTED]';
+    }
+    if ((req.query as any)?.apiKey) {
+      (req.query as any).apiKey = '[REDACTED]';
+    }
+  });
+
   // Global middleware
   app.addHook('onRequest', securityHeaders);
   app.addHook('onRequest', apiVersioning(['v1']));
@@ -185,26 +202,27 @@ export async function createApp(): Promise<FastifyInstance> {
 
   // Global error handler
   app.setErrorHandler(async (error, request, reply) => {
+    const traceId = crypto.randomUUID();
+    const status = (error as any).statusCode || 500;
     const sanitized = sanitizeError(error as any);
     
-    // Log the error
+    // Log the error with trace ID
     request.log.error({
-      error: sanitized,
-      req: {
-        method: request.method,
-        url: request.url,
-        headers: request.headers,
-      },
-    }, 'Request error');
-
-    // Send error response
-    reply.status(sanitized.statusCode || 500).send({
-      success: false,
+      err: error,
+      traceId,
+      url: request.url,
+      method: request.method,
+      ip: request.ip,
+    });
+    
+    // Send sanitized error response to client
+    reply.status(status).send({
       error: {
-        code: sanitized.code,
-        message: sanitized.message,
+        code: sanitized.code || 'INTERNAL_SERVER_ERROR',
+        message: status < 500 ? sanitized.message : 'An unexpected error occurred',
+        traceId,
         ...(env.NODE_ENV !== 'production' && { stack: sanitized.stack }),
-      },
+      }
     });
   });
 
