@@ -304,13 +304,23 @@ const documentRoutes: FastifyPluginAsync = async function (fastify) {
         description: 'Apply Bates numbering to document',
         tags: ['Documents'],
         security: [{ ApiKeyAuth: [] }],
-        params: z.object({ id: z.string() }),
-        body: z.object({
-          prefix: z.string().min(1).max(20),
-          startNumber: z.number().min(1).max(999999),
-          position: z.enum(['top-left', 'top-right', 'bottom-left', 'bottom-right']).optional(),
-          fontSize: z.number().min(6).max(72).optional(),
-        }),
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' }
+          },
+          required: ['id']
+        },
+        body: {
+          type: 'object',
+          properties: {
+            prefix: { type: 'string', minLength: 1, maxLength: 20 },
+            startNumber: { type: 'number', minimum: 1, maximum: 999999 },
+            position: { type: 'string', enum: ['top-left', 'top-right', 'bottom-left', 'bottom-right'] },
+            fontSize: { type: 'number', minimum: 6, maximum: 72 }
+          },
+          required: ['prefix', 'startNumber']
+        }
       },
     },
     async (request) => {
@@ -338,7 +348,13 @@ const documentRoutes: FastifyPluginAsync = async function (fastify) {
         description: 'Preview PII detection results',
         tags: ['Documents'],
         security: [{ ApiKeyAuth: [] }],
-        params: z.object({ id: z.string() }),
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' }
+          },
+          required: ['id']
+        },
       },
     },
     async (request) => {
@@ -357,11 +373,20 @@ const documentRoutes: FastifyPluginAsync = async function (fastify) {
         description: 'Apply PII redaction to document',
         tags: ['Documents'],
         security: [{ ApiKeyAuth: [] }],
-        params: z.object({ id: z.string() }),
-        body: z.object({
-          applyAll: z.boolean().optional(),
-          selectedTypes: z.array(z.string()).optional(),
-        }),
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' }
+          },
+          required: ['id']
+        },
+        body: {
+          type: 'object',
+          properties: {
+            applyAll: { type: 'boolean' },
+            selectedTypes: { type: 'array', items: { type: 'string' } }
+          }
+        },
       },
     },
     async (request) => {
@@ -389,7 +414,13 @@ const documentRoutes: FastifyPluginAsync = async function (fastify) {
         description: 'Generate custody chain manifest',
         tags: ['Documents'],
         security: [{ ApiKeyAuth: [] }],
-        params: z.object({ id: z.string() }),
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' }
+          },
+          required: ['id']
+        },
       },
     },
     async (request) => {
@@ -408,7 +439,13 @@ const documentRoutes: FastifyPluginAsync = async function (fastify) {
         description: 'Verify custody chain integrity',
         tags: ['Documents'],
         security: [{ ApiKeyAuth: [] }],
-        params: z.object({ id: z.string() }),
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' }
+          },
+          required: ['id']
+        },
       },
     },
     async (request) => {
@@ -427,7 +464,13 @@ const documentRoutes: FastifyPluginAsync = async function (fastify) {
         description: 'Export evidence package',
         tags: ['Documents'],
         security: [{ ApiKeyAuth: [] }],
-        params: z.object({ id: z.string() }),
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' }
+          },
+          required: ['id']
+        },
       },
     },
     async (request) => {

@@ -4,8 +4,13 @@ import { Toaster } from 'sonner'
 import HomePage from './pages/home'
 import UploadPage from './pages/upload'
 import DocumentsPage from './pages/documents'
+import { DemoV2Page } from './pages/demo-v2'
+import Onboarding from './pages/onboarding'
+import ModernDashboard from './pages/modern-dashboard'
+import AdminDashboard from './pages/admin-dashboard'
+import MetricsDashboard from './pages/metrics-dashboard'
 import { Button } from './components/ui/button'
-import { FileText, Upload, BarChart3, Settings, Home } from 'lucide-react'
+import { FileText, Upload, BarChart3, Settings, Home, Users, Shield, TrendingUp } from 'lucide-react'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,9 +51,33 @@ function Navigation() {
               </Link>
             </Button>
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/analytics" className="flex items-center space-x-2">
+              <Link to="/dashboard" className="flex items-center space-x-2">
                 <BarChart3 className="w-4 h-4" />
-                <span>Analytics</span>
+                <span>Dashboard</span>
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/demo-v2" className="flex items-center space-x-2">
+                <FileText className="w-4 h-4" />
+                <span>Demo v2.0</span>
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/metrics-dashboard" className="flex items-center space-x-2">
+                <TrendingUp className="w-4 h-4" />
+                <span>Metrics</span>
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/admin-dashboard" className="flex items-center space-x-2">
+                <Shield className="w-4 h-4" />
+                <span>Admin</span>
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/onboarding" className="flex items-center space-x-2">
+                <Users className="w-4 h-4" />
+                <span>Setup</span>
               </Link>
             </Button>
             <Button variant="ghost" size="sm" asChild>
@@ -90,7 +119,11 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/documents" element={<DocumentsPage />} />
-              <Route path="/analytics" element={<ComingSoon title="Analytics" />} />
+              <Route path="/dashboard" element={<ModernDashboard />} />
+              <Route path="/demo-v2" element={<DemoV2Page />} />
+              <Route path="/metrics-dashboard" element={<MetricsDashboard />} />
+              <Route path="/admin-dashboard" element={<AdminDashboard />} />
+              <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/settings" element={<ComingSoon title="Configurações" />} />
               <Route path="*" element={<ComingSoon title="Página não encontrada" />} />
             </Routes>

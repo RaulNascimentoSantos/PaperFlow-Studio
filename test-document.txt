@@ -1,0 +1,25 @@
+TESTE DE DOCUMENTO LEGAL - PAPERFLOW V2.0
+
+INFORMAÇÕES PESSOAIS PARA TESTE:
+- CPF: 123.456.789-01
+- CNPJ: 12.345.678/0001-90
+- RG: RG 12.345.678-9
+- Email: advogado@exemplo.com.br
+- Telefone: (11) 99999-8888
+- OAB/SP 123456
+
+PROCESSO CNJ: 1234567-12.2023.8.26.0001
+
+Este documento contém informações pessoais identificáveis (PII) que devem ser detectadas e protegidas pelo sistema PaperFlow. O sistema deve identificar CPF, CNPJ, OAB, números de processos CNJ, emails, telefones e outras informações sensíveis.
+
+CONTA BANCÁRIA: Conta 12345-6 Agência 1234
+PIX: usuario@exemplo.com.br
+CEP: 01310-100
+PLACA: ABC-1234
+
+Este texto será usado para testar:
+1. Detecção de PII
+2. Numeração Bates
+3. Cadeia de custódia
+4. Webhooks
+5. Métricas do Prometheus

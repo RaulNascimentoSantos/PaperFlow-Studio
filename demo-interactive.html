@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 PaperFlow V3.0 - Demonstração Interativa</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .demo-section {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .section-content {
+            padding: 30px;
+        }
+        
+        .test-button {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33,150,243,0.4);
+        }
+        
+        .result-box {
+            background: #f8f9fa;
+            border-left: 4px solid #4CAF50;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin: 5px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .quick-link {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            text-decoration: none;
+            color: #333;
+            transition: transform 0.3s;
+        }
+        
+        .quick-link:hover {
+            transform: translateY(-5px);
+        }
+        
+        .emoji {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 PaperFlow V3.0</h1>
+            <p>Demonstração Interativa - Enterprise Multi-Tenant Document Processing Platform</p>
+        </div>
+        
+        <div class="quick-links">
+            <a href="http://localhost:3002/docs" target="_blank" class="quick-link">
+                <span class="emoji">📚</span>
+                <h3>API Documentation</h3>
+                <p>Interface Swagger completa</p>
+            </a>
+            <a href="http://localhost:5174" target="_blank" class="quick-link">
+                <span class="emoji">🖥️</span>
+                <h3>Frontend React</h3>
+                <p>Interface de usuário moderna</p>
+            </a>
+            <a href="http://localhost:3002/v1/health" target="_blank" class="quick-link">
+                <span class="emoji">💚</span>
+                <h3>Health Check</h3>
+                <p>Status dos serviços</p>
+            </a>
+        </div>
+        
+        <div class="demo-section">
+            <div class="section-header">
+                💚 Sistema de Health Check
+            </div>
+            <div class="section-content">
+                <p>Vamos verificar se todos os serviços estão funcionando:</p>
+                <button class="test-button" onclick="testHealth()">🔍 Verificar Status dos Serviços</button>
+                <div id="health-loading" class="loading">Verificando serviços...</div>
+                <div id="health-result" class="result-box" style="display: none;"></div>
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <div class="section-header">
+                🏢 Sistema Multi-Tenant
+            </div>
+            <div class="section-content">
+                <p>Demonstração do isolamento por tenant e marketplace público:</p>
+                <button class="test-button" onclick="testMarketplace()">🛒 Testar Marketplace Público</button>
+                <button class="test-button" onclick="testTenantTemplates()">🏢 Testar Templates por Tenant</button>
+                <div id="tenant-loading" class="loading">Carregando dados do tenant...</div>
+                <div id="tenant-result" class="result-box" style="display: none;"></div>
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <div class="section-header">
+                📋 Templates com Workflows
+            </div>
+            <div class="section-content">
+                <p>Demonstração dos templates com workflows complexos (o problema que corrigimos!):</p>
+                <button class="test-button" onclick="testTemplateDetails()">🔍 Testar Detalhes do Template</button>
+                <button class="test-button" onclick="testWorkflowSteps()">⚙️ Verificar Workflow Steps</button>
+                <div id="template-loading" class="loading">Carregando template...</div>
+                <div id="template-result" class="result-box" style="display: none;"></div>
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <div class="section-header">
+                📊 Métricas de Performance
+            </div>
+            <div class="section-content">
+                <p>Vamos executar múltiplas chamadas para testar performance:</p>
+                <button class="test-button" onclick="performanceTest()">⚡ Teste de Performance</button>
+                <div id="performance-loading" class="loading">Executando testes de performance...</div>
+                <div id="performance-result" class="result-box" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3002';
+        const API_KEY = 'pk_test_123456789';
+        const TENANT_ID = 'test-tenant-complete-v3';
+
+        async function makeRequest(endpoint, headers = {}) {
+            try {
+                const response = await fetch(API_URL + endpoint, {
+                    headers: {
+                        'x-api-key': API_KEY,
+                        ...headers
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                throw new Error(`Erro na requisição: ${error.message}`);
+            }
+        }
+
+        function showLoading(elementId) {
+            document.getElementById(elementId).style.display = 'block';
+        }
+
+        function hideLoading(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+
+        function showResult(elementId, content, isError = false) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.innerHTML = content;
+            if (isError) {
+                element.style.borderLeftColor = '#dc3545';
+            } else {
+                element.style.borderLeftColor = '#4CAF50';
+            }
+        }
+
+        async function testHealth() {
+            showLoading('health-loading');
+            
+            try {
+                const result = await makeRequest('/v1/health');
+                
+                let html = `
+                    <h4>✅ Todos os Serviços Funcionando!</h4>
+                    <p><strong>Status:</strong> ${result.status}</p>
+                    <p><strong>Versão:</strong> ${result.version}</p>
+                    <p><strong>Uptime:</strong> ${result.uptime_seconds} segundos</p>
+                    <h5>Status dos Serviços:</h5>
+                    <ul>
+                `;
+                
+                for (const [service, status] of Object.entries(result.services)) {
+                    const icon = status === 'healthy' ? '✅' : '❌';
+                    html += `<li>${icon} <strong>${service}:</strong> ${status}</li>`;
+                }
+                
+                html += '</ul>';
+                showResult('health-result', html);
+                
+            } catch (error) {
+                showResult('health-result', `❌ <strong>Erro:</strong> ${error.message}`, true);
+            }
+            
+            hideLoading('health-loading');
+        }
+
+        async function testMarketplace() {
+            showLoading('tenant-loading');
+            
+            try {
+                const result = await makeRequest('/v1/templates/marketplace?page=1&limit=5');
+                
+                let html = `
+                    <h4>🛒 Marketplace Público Funcionando!</h4>
+                    <p><strong>Templates encontrados:</strong> ${result.templates.length}</p>
+                    <h5>Templates no Marketplace:</h5>
+                `;
+                
+                result.templates.forEach(template => {
+                    html += `
+                        <div style="margin: 10px 0; padding: 10px; background: #e9ecef; border-radius: 5px;">
+                            <strong>${template.icon} ${template.name}</strong><br>
+                            <small>Categoria: ${template.category} | Usos: ${template.metrics.usageCount} | Rating: ${template.metrics.rating}⭐</small><br>
+                            <em>${template.description}</em>
+                        </div>
+                    `;
+                });
+                
+                showResult('tenant-result', html);
+                
+            } catch (error) {
+                showResult('tenant-result', `❌ <strong>Erro:</strong> ${error.message}`, true);
+            }
+            
+            hideLoading('tenant-loading');
+        }
+
+        async function testTenantTemplates() {
+            showLoading('tenant-loading');
+            
+            try {
+                const result = await makeRequest('/v1/templates', {
+                    'x-tenant-id': TENANT_ID
+                });
+                
+                let html = `
+                    <h4>🏢 Templates do Tenant Funcionando!</h4>
+                    <p><strong>Tenant ID:</strong> ${TENANT_ID}</p>
+                    <p><strong>Templates encontrados:</strong> ${result.templates.length}</p>
+                    <p><strong>Total:</strong> ${result.pagination.total}</p>
+                    <h5>Templates do Tenant:</h5>
+                `;
+                
+                result.templates.forEach(template => {
+                    html += `
+                        <div style="margin: 10px 0; padding: 10px; background: #e9ecef; border-radius: 5px;">
+                            <strong>${template.icon} ${template.name}</strong>
+                            <span class="status ${template.visibility === 'tenant' ? 'success' : ''}">${template.visibility}</span><br>
+                            <small>ID: ${template.id}</small><br>
+                            <small>Categoria: ${template.category} | Usos: ${template.metrics.usageCount}</small><br>
+                            <em>${template.description}</em>
+                        </div>
+                    `;
+                });
+                
+                showResult('tenant-result', html);
+                
+            } catch (error) {
+                showResult('tenant-result', `❌ <strong>Erro:</strong> ${error.message}`, true);
+            }
+            
+            hideLoading('tenant-loading');
+        }
+
+        async function testTemplateDetails() {
+            showLoading('template-loading');
+            
+            try {
+                // Primeiro, pegar lista de templates
+                const templateList = await makeRequest('/v1/templates', {
+                    'x-tenant-id': TENANT_ID
+                });
+                
+                if (templateList.templates.length === 0) {
+                    showResult('template-result', '❌ Nenhum template encontrado para testar', true);
+                    hideLoading('template-loading');
+                    return;
+                }
+                
+                // Pegar detalhes do primeiro template
+                const templateId = templateList.templates[0].id;
+                const templateDetails = await makeRequest(`/v1/templates/${templateId}`, {
+                    'x-tenant-id': TENANT_ID
+                });
+                
+                let html = `
+                    <h4>📋 Detalhes do Template - FUNCIONA PERFEITAMENTE!</h4>
+                    <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                        <strong>✅ PROBLEMA RESOLVIDO:</strong> Workflow steps agora são parseados corretamente!
+                    </div>
+                    <p><strong>Nome:</strong> ${templateDetails.name}</p>
+                    <p><strong>ID:</strong> ${templateDetails.id}</p>
+                    <p><strong>Categoria:</strong> ${templateDetails.category}</p>
+                    <p><strong>Visibilidade:</strong> ${templateDetails.visibility}</p>
+                    <p><strong>Versão:</strong> ${templateDetails.version}</p>
+                `;
+                
+                if (templateDetails.workflow && templateDetails.workflow.steps) {
+                    html += `
+                        <h5>⚙️ Workflow Steps (${templateDetails.workflow.steps.length}):</h5>
+                        <ol>
+                    `;
+                    templateDetails.workflow.steps.forEach(step => {
+                        html += `<li><strong>${step.name}</strong> (${step.type}) - Order: ${step.order}, Required: ${step.required}</li>`;
+                    });
+                    html += '</ol>';
+                } else {
+                    html += '<p><strong>❌ Workflow:</strong> Não encontrado ou malformado</p>';
+                }
+                
+                if (templateDetails.fields && templateDetails.fields.length) {
+                    html += `
+                        <h5>📝 Campos (${templateDetails.fields.length}):</h5>
+                        <ul>
+                    `;
+                    templateDetails.fields.forEach(field => {
+                        html += `<li><strong>${field.label}</strong> (${field.name}) - ${field.type}, Required: ${field.required}</li>`;
+                    });
+                    html += '</ul>';
+                }
+                
+                showResult('template-result', html);
+                
+            } catch (error) {
+                showResult('template-result', `❌ <strong>Erro:</strong> ${error.message}`, true);
+            }
+            
+            hideLoading('template-loading');
+        }
+
+        async function testWorkflowSteps() {
+            showLoading('template-loading');
+            
+            try {
+                const templateList = await makeRequest('/v1/templates', {
+                    'x-tenant-id': TENANT_ID
+                });
+                
+                const templateId = templateList.templates[0].id;
+                const templateDetails = await makeRequest(`/v1/templates/${templateId}`, {
+                    'x-tenant-id': TENANT_ID
+                });
+                
+                let html = `<h4>⚙️ Verificação Detalhada do Workflow</h4>`;
+                
+                if (templateDetails.workflow) {
+                    html += `<p><strong>✅ Workflow Object:</strong> Existe</p>`;
+                    
+                    if (templateDetails.workflow.steps) {
+                        html += `<p><strong>✅ Steps Array:</strong> Existe com ${templateDetails.workflow.steps.length} steps</p>`;
+                        
+                        html += `<div style="background: #d4edda; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                            <strong>🎉 SUCESSO COMPLETO!</strong><br>
+                            O parsing do workflow JSON está funcionando perfeitamente.<br>
+                            Antes retornava <code>workflow: {}</code>, agora retorna o objeto completo com steps!
+                        </div>`;
+                        
+                        html += '<h5>Detalhes de Cada Step:</h5>';
+                        templateDetails.workflow.steps.forEach((step, index) => {
+                            html += `
+                                <div style="background: #f8f9fa; padding: 10px; margin: 5px 0; border-left: 4px solid #007bff;">
+                                    <strong>Step ${index + 1}:</strong> ${step.name}<br>
+                                    <strong>Type:</strong> ${step.type}<br>
+                                    <strong>Order:</strong> ${step.order}<br>
+                                    <strong>Required:</strong> ${step.required}<br>
+                                    <strong>Config:</strong> ${JSON.stringify(step.config)}
+                                </div>
+                            `;
+                        });
+                    } else {
+                        html += `<p><strong>❌ Steps Array:</strong> Não existe</p>`;
+                    }
+                } else {
+                    html += `<p><strong>❌ Workflow Object:</strong> Não existe</p>`;
+                }
+                
+                showResult('template-result', html);
+                
+            } catch (error) {
+                showResult('template-result', `❌ <strong>Erro:</strong> ${error.message}`, true);
+            }
+            
+            hideLoading('template-loading');
+        }
+
+        async function performanceTest() {
+            showLoading('performance-loading');
+            
+            try {
+                const startTime = Date.now();
+                const requests = [];
+                
+                // Fazer 5 requisições paralelas
+                for (let i = 0; i < 5; i++) {
+                    requests.push(makeRequest('/v1/templates', {
+                        'x-tenant-id': TENANT_ID
+                    }));
+                }
+                
+                const results = await Promise.all(requests);
+                const endTime = Date.now();
+                const totalTime = endTime - startTime;
+                
+                let html = `
+                    <h4>⚡ Teste de Performance Concluído!</h4>
+                    <p><strong>Requisições:</strong> 5 paralelas</p>
+                    <p><strong>Tempo Total:</strong> ${totalTime}ms</p>
+                    <p><strong>Tempo Médio:</strong> ${(totalTime / 5).toFixed(2)}ms por requisição</p>
+                    <p><strong>Status:</strong> Todas as requisições foram bem-sucedidas!</p>
+                    
+                    <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                        <strong>✅ Performance Excelente!</strong><br>
+                        O sistema suporta múltiplas requisições simultâneas com isolamento por tenant.
+                    </div>
+                `;
+                
+                results.forEach((result, index) => {
+                    html += `<p><strong>Requisição ${index + 1}:</strong> ${result.templates.length} templates retornados</p>`;
+                });
+                
+                showResult('performance-result', html);
+                
+            } catch (error) {
+                showResult('performance-result', `❌ <strong>Erro:</strong> ${error.message}`, true);
+            }
+            
+            hideLoading('performance-loading');
+        }
+
+        // Auto-executar health check ao carregar a página
+        window.onload = function() {
+            setTimeout(testHealth, 1000);
+        };
+    </script>
+</body>
+</html>

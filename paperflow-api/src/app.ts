@@ -19,6 +19,7 @@ import {
   apiVersioning,
   requestSizeLimit 
 } from './middleware/security';
+import { createTenantMiddleware } from './middleware/tenant';
 
 // Error handling
 import { sanitizeError } from './utils/errors';
@@ -34,6 +35,12 @@ import aiRoutes from './routes/ai';
 import webhooksRoutes from './routes/webhooks';
 import userRoutes from './routes/users';
 import usageRoutes from './routes/usage';
+import tenantRoutes from './routes/tenants';
+import templatesRoutes from './routes/templates';
+import billingRoutes from './routes/billing';
+import integrationsRoutes from './routes/integrations';
+import metricsRoutes from './routes/metrics';
+import securityRoutes from './routes/security';
 
 export async function createApp(): Promise<FastifyInstance> {
   // Initialize database first
@@ -147,20 +154,28 @@ export async function createApp(): Promise<FastifyInstance> {
   });
 
   // Security hooks for sanitizing sensitive data in logs
-  app.addHook('onRequest', async (req) => {
-    if (req.headers['x-api-key']) {
-      req.headers['x-api-key'] = '[REDACTED]';
-    }
-    if ((req.query as any)?.apiKey) {
-      (req.query as any).apiKey = '[REDACTED]';
-    }
-  });
+  // Only apply redaction in production to avoid breaking development
+  if (env.NODE_ENV === 'production') {
+    app.addHook('onRequest', async (req) => {
+      if (req.headers['x-api-key']) {
+        req.headers['x-api-key'] = '[REDACTED]';
+      }
+      if ((req.query as any)?.apiKey) {
+        (req.query as any).apiKey = '[REDACTED]';
+      }
+    });
+  }
 
   // Global middleware
   app.addHook('onRequest', securityHeaders);
   app.addHook('onRequest', apiVersioning(['v1']));
   app.addHook('onRequest', ipRateLimit(env.RATE_LIMIT_MAX, env.RATE_LIMIT_WINDOW));
   app.addHook('onRequest', requestSizeLimit(env.MAX_FILE_SIZE_MB * 1024 * 1024));
+  
+  // Tenant middleware (applied to tenant-scoped routes only)
+  const { DatabaseService } = await import('./services/database');
+  const db = new DatabaseService();
+  const tenantMiddleware = createTenantMiddleware(db);
 
   // API root endpoint
   app.get('/', {
@@ -190,14 +205,29 @@ export async function createApp(): Promise<FastifyInstance> {
 
   // Register API routes with versioning
   app.register(async function(app) {
-    // All routes will be prefixed with /v1
+    // Public routes (no tenant context required)
     await app.register(healthRoutes, { prefix: '/v1/health' });
     await app.register(authRoutes, { prefix: '/v1/auth' });
-    await app.register(documentRoutes, { prefix: '/v1/documents' });
-    await app.register(aiRoutes, { prefix: '/v1/ai' });
-    await app.register(webhooksRoutes, { prefix: '/v1/webhooks' });
-    await app.register(userRoutes, { prefix: '/v1/users' });
-    await app.register(usageRoutes, { prefix: '/v1/usage' });
+    
+    // Administrative routes (tenant management)
+    await app.register(tenantRoutes, { prefix: '/v1/tenants' });
+    
+    // Tenant-scoped routes (require tenant context)
+    app.register(async function(tenantApp) {
+      // Apply tenant middleware to all routes in this context
+      tenantApp.addHook('onRequest', tenantMiddleware);
+      
+      await tenantApp.register(documentRoutes, { prefix: '/v1/documents' });
+      await tenantApp.register(templatesRoutes, { prefix: '/v1/templates' });
+      await tenantApp.register(billingRoutes, { prefix: '/v1/billing' });
+      await tenantApp.register(integrationsRoutes, { prefix: '/v1/integrations' });
+      await tenantApp.register(aiRoutes, { prefix: '/v1/ai' });
+      await tenantApp.register(webhooksRoutes, { prefix: '/v1/webhooks' });
+      await tenantApp.register(userRoutes, { prefix: '/v1/users' });
+      await tenantApp.register(usageRoutes, { prefix: '/v1/usage' });
+      await tenantApp.register(metricsRoutes, { prefix: '/v1/metrics' });
+      await tenantApp.register(securityRoutes, { prefix: '/v1/security' });
+    });
   });
 
   // Global error handler

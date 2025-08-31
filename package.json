@@ -14,7 +14,7 @@
     "dev:api": "pnpm --filter paperflow-api dev",
     "dev:web": "pnpm --filter @paperflow/web dev",
     "build": "pnpm -r build",
-    "build:api": "pnpm --filter paperflow-api build", 
+    "build:api": "pnpm --filter paperflow-api build",
     "build:web": "pnpm --filter @paperflow/web build",
     "build:sdk": "pnpm --filter @paperflow/sdk build",
     "test": "pnpm -r test",
@@ -33,8 +33,8 @@
     "@types/node": "^20.10.0",
     "concurrently": "^8.2.2",
     "prettier": "^3.1.0",
-    "typescript": "^5.3.0",
-    "rimraf": "^5.0.5"
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.0"
   },
   "engines": {
     "node": ">=20.0.0",
@@ -51,5 +51,8 @@
     "fastify"
   ],
   "author": "PaperFlow Team",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "eventsource": "^4.0.0"
+  }
 }
