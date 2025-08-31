@@ -1,0 +1,127 @@
+Título: PaperFlow Studio – Gere o Frontend completo (local-first) e refine a API para DX
+
+Contexto curto:
+Tenho um backend chamado PaperFlow API com autenticação por API Key, processamento de PDFs, OCR, extração de tabelas, RAG e analytics. Preciso da camada visual (web) para rodar 100% local, além de pequenos ajustes na API para integrar perfeitamente. O objetivo é: subir docker compose, rodar api + web, fazer upload, acompanhar o processamento em tempo real, visualizar PDF/tabelas, fazer Q&A (RAG) com citações e ver analytics.
+Referência de capacidades e endpoints da API estão na documentação técnica (endpoints como /v1/documents/*, /v1/ai/*, /v1/usage/*, /v1/health, /docs).
+
+Seu papel: Arquiteta de Soluções + Engenheira Full-Stack. Entregue código pronto, organizado, com scripts de dev. Use melhores práticas e deixe tudo testável localmente.
+
+Entregáveis obrigatórios
+
+Frontend em apps/web (Vite + React + TS + Tailwind + shadcn/ui)
+
+Páginas:
+
+/: tela de introdução e configuração de x-api-key.
+
+/upload: drag & drop, barra de progresso, opção “forçar OCR”, envio por pre-signed URL quando disponível; fallback para upload direto.
+
+/documents: grid com busca/filtro, status em tempo real (SSE), ações (reprocessar, baixar, excluir).
+
+/documents/:id (Viewer): pdf.js com miniaturas; abas: Texto, Tabelas (grid editável + Export CSV), Metadados; destacar trechos citados pelo RAG.
+
+/qa/:documentId: chat RAG com streaming; cada mensagem traz citações com página/chunk e botão “mostrar no PDF”.
+
+/analytics: gráficos (recharts) com documentos/dia, tempo médio por etapa, taxa OCR, chamadas IA, créditos.
+
+/settings: trocar API key, alternar provider IA (OpenAI vs Mock), thresholds de similaridade e tamanho de chunk.
+
+Técnicas:
+
+TanStack Router + TanStack Query; zustand para preferências; react-hook-form + zod.
+
+Cliente gerado por OpenAPI (use orval ou openapi-typescript). Caso /openapi.json não exista, implemente client manual tipado.
+
+SSE para progresso (subscribe a /v1/documents/{id}/events); fallback a polling.
+
+Componente PdfViewer com highlight usando {page, bbox|textRange} das citações.
+
+Tema dark por padrão.
+
+UX:
+
+Toasts claros (sucesso/erro), empty states amigáveis e loaders por etapa.
+
+Botão “Copiar resposta” no RAG e “Baixar CSV” nas tabelas.
+
+SDK TypeScript em packages/sdk
+
+Gere tipos e hooks de API a partir do OpenAPI JSON.
+
+Exponha funções: upload, listDocuments, getDocument, reprocess, download, summarize, queryRag(stream?), classify, getUsage, etc.
+
+Suporte stream e SSE (utilitários in-package).
+
+Infra local em infra/docker-compose.local.yml
+
+Serviços: postgres (com pgvector), redis, minio, api, web.
+
+Volumes para dados persistentes.
+
+Variáveis mínimas em .env.example (API e web).
+
+Ajustes pontuais na API (se faltarem)
+
+OpenAPI JSON acessível (ex.: GET /openapi.json).
+
+SSE: GET /v1/documents/{id}/events emitindo etapas (queued, parsing, ocr, tables, embeddings, rag-indexed, completed, failed) com %.
+
+Pre-signed upload: POST /v1/documents/upload-url (URL + fields) e POST /v1/documents/complete.
+
+RAG citations: respostas com { page, bbox|textRange, chunkId }.
+
+CORS dev: permitir http://localhost:5173.
+
+Parametrizar OPENAI_MODEL e OPENAI_EMBEDDING_MODEL por env; manter mock como padrão em dev.
+
+Qualidade e DX
+
+ESLint + Prettier + Husky.
+
+Testes:
+
+Front: Vitest + Testing Library (componentes chave), e2e Playwright (upload→process→viewer→RAG).
+
+SDK: testes de serialização/stream/SSE.
+
+Scripts:
+
+pnpm -w dev: roda api + web.
+
+pnpm -w build: build de api + web + sdk.
+
+pnpm -w test: roda testes.
+
+Critérios de aceitação (MVP)
+
+Subo docker compose e abro http://localhost:5173.
+
+Colei minha x-api-key, fiz upload de um PDF grande e vi progresso em tempo real.
+
+Ao finalizar, consigo abrir o Viewer, ver tabelas em grid e baixar CSV.
+
+Em Q&A, recebo resposta com streaming e citações; ao clicar, o viewer faz scroll para a página correta com highlight.
+
+Em Analytics, vejo gráficos básicos.
+
+Tudo roda sem internet (usando provider mock) e com OpenAI quando disponível.
+
+Comece agora:
+
+Se não existir /openapi.json, crie/explicite a rota na API.
+
+Gere packages/sdk com orval (ou openapi-typescript).
+
+Bootstrap apps/web com as rotas e páginas listadas.
+
+Entregue PRs pequenos por feature (Upload → Explorer → Viewer → Q&A → Analytics).
+
+Documente no README como subir local e rodar testes.
+
+Observações
+
+Priorizo clareza de UX e capacidade de debugar.
+
+Prefira streaming/SSE a polling sempre que possível.
+
+Mantenha toggles para trocar de Mock ↔ OpenAI sem rebuild.

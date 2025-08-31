@@ -1,0 +1,40 @@
+{
+  "name": "@paperflow/sdk",
+  "version": "1.0.0-mvp",
+  "description": "PaperFlow TypeScript SDK",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "tsc -w",
+    "build": "rimraf dist && pnpm generate && tsc",
+    "generate": "pnpm generate:types && pnpm generate:client",
+    "generate:types": "openapi-typescript http://localhost:3002/openapi.json -o src/generated/api.ts",
+    "generate:client": "orval --config orval.config.js",
+    "test": "vitest",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "openapi-typescript": "^6.7.0",
+    "orval": "^6.20.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "keywords": [
+    "paperflow",
+    "sdk",
+    "typescript",
+    "openapi",
+    "api-client"
+  ],
+  "author": "PaperFlow Team",
+  "license": "MIT"
+}

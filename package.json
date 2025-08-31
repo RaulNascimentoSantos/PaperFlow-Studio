@@ -1,0 +1,55 @@
+{
+  "name": "@paperflow/monorepo",
+  "version": "1.0.0-mvp",
+  "private": true,
+  "description": "PaperFlow Studio - Complete document intelligence platform",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "paperflow-api"
+  ],
+  "packageManager": "pnpm@8.15.0",
+  "scripts": {
+    "dev": "concurrently \"pnpm -w dev:api\" \"pnpm -w dev:web\"",
+    "dev:api": "pnpm --filter paperflow-api dev",
+    "dev:web": "pnpm --filter @paperflow/web dev",
+    "build": "pnpm -r build",
+    "build:api": "pnpm --filter paperflow-api build", 
+    "build:web": "pnpm --filter @paperflow/web build",
+    "build:sdk": "pnpm --filter @paperflow/sdk build",
+    "test": "pnpm -r test",
+    "test:api": "pnpm --filter paperflow-api test",
+    "test:web": "pnpm --filter @paperflow/web test",
+    "test:e2e": "pnpm --filter @paperflow/web test:e2e",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
+    "type-check": "pnpm -r type-check",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "docker:up": "docker-compose -f infra/docker-compose.local.yml up -d",
+    "docker:down": "docker-compose -f infra/docker-compose.local.yml down",
+    "docker:logs": "docker-compose -f infra/docker-compose.local.yml logs -f"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "concurrently": "^8.2.2",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.0",
+    "rimraf": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "keywords": [
+    "document-processing",
+    "pdf",
+    "ai",
+    "rag",
+    "ocr",
+    "typescript",
+    "react",
+    "fastify"
+  ],
+  "author": "PaperFlow Team",
+  "license": "MIT"
+}
